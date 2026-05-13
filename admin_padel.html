@@ -28,7 +28,7 @@
         .bracket-container { display: flex; gap: 15px; width: max-content; min-width: 100%; padding: 10px; }
         .round-column { width: 300px; display: flex; flex-direction: column; gap: 12px; }
         .round-title { text-align: center; color: var(--accent); font-weight: bold; border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 5px; }
-        .match-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+        .match-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 5px; }
         @media (max-width: 800px) { .ad-images-wrapper img { width: 48%; height: 75px; } .bracket-container { flex-direction: column; width: 100%; } .round-column { width: 100%; } }
     </style>
 </head>
@@ -37,32 +37,53 @@
 <div id="admin-content">
     <header><h1>TORNEO DE PÁDEL</h1><img src="logotipopng.png" class="logo-img"><div>Matías Arena & Leandro Campetti</div></header>
     <div class="ad-banner-container"><div class="ad-images-wrapper"><img src="Publi-1.jpg"><img src="Publi-2.jpg"><img src="Publi-3.jpg"><img src="Publi-4.jpg"></div></div>
-    <div class="tabs" id="tabs-container"><button style="background:#ef4444; color:white; border:none; padding:8px 15px; border-radius:12px; font-weight:bold; cursor:pointer" onclick="resetAll()">Limpiar Torneo</button></div>
+    <div class="tabs" id="tabs-container">
+        <button style="background:#ef4444; color:white; border:none; padding:8px 15px; border-radius:12px; font-weight:bold; cursor:pointer" onclick="resetAll()">Limpiar Torneo</button>
+    </div>
     <div id="sections-container"></div>
 </div>
 <script>
-    function checkPass() { if(document.getElementById('pass-field').value === 'cuartoset') { document.getElementById('login-overlay').style.display = 'none'; document.getElementById('admin-content').style.display = 'block'; } }
-    const firebaseConfig = { apiKey: "AIzaSyDwSOR6VxlrLlfEoab9Zi0GjbeFtrQiVjY", authDomain: "proyecto-mundial-2026.firebaseapp.com", databaseURL: "https://proyecto-mundial-2026-default-rtdb.firebaseio.com", projectId: "proyecto-mundial-2026", storageBucket: "proyecto-mundial-2026.firebasestorage.app", messagingSenderId: "774794097290", appId: "1:774794097290:web:91ff18d99e7e07a6873373" };
-    firebase.initializeApp(firebaseConfig); const db = firebase.database();
     const CATEGORIES = ['Primera', 'Segunda', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava'];
-    const ROUNDS = ['r16', 'qf', 'sf', 'f']; const MATCHES_PER_ROUND = { 'r16': 8, 'qf': 4, 'sf': 2, 'f': 1 };
+    const ROUNDS = ['r16', 'qf', 'sf', 'f']; 
+    const MATCHES_PER_ROUND = { 'r16': 8, 'qf': 4, 'sf': 2, 'f': 1 };
     let tournamentData = {};
-    function initEmptyData() { CATEGORIES.forEach(cat => { tournamentData[cat] = { 'r16': [], 'qf': [], 'sf': [], 'f': [] }; ROUNDS.forEach(r => { for(let i=0; i<MATCHES_PER_ROUND[r]; i++) tournamentData[cat][r].push({ p1: '', p2: '', p1s1: '', p2s1: '', court: '' }); }); }); }
-    initEmptyData();
+
+    function checkPass() {
+        if(document.getElementById('pass-field').value === 'cuartoset') {
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('admin-content').style.display = 'block';
+        }
+    }
+
+    function initEmptyData() {
+        CATEGORIES.forEach(cat => {
+            tournamentData[cat] = { 'r16': [], 'qf': [], 'sf': [], 'f': [] };
+            ROUNDS.forEach(r => {
+                for(let i=0; i<MATCHES_PER_ROUND[r]; i++) tournamentData[cat][r].push({ p1: '', p2: '', p1s1: '', p2s1: '', court: '' });
+            });
+        });
+    }
+
     function showSection(id) { 
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); 
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('sec-' + id).classList.add('active'); 
         document.getElementById('btn-' + id).classList.add('active');
     }
+
+    // Dibujar interfaz INMEDIATAMENTE
     const tabsContainer = document.getElementById('tabs-container');
+    const sectionsContainer = document.getElementById('sections-container');
     CATEGORIES.forEach((cat, index) => { 
         const activeClass = index === 0 ? 'active' : ''; 
         tabsContainer.innerHTML += `<button id="btn-${cat}" class="tab-btn ${activeClass}" onclick="showSection('${cat}')">${cat}</button>`; 
-        document.getElementById('sections-container').innerHTML += `<div id="sec-${cat}" class="section ${activeClass}"><div class="bracket-wrapper"><div id="bracket-${cat}" class="bracket-container"></div></div></div>`; 
+        sectionsContainer.innerHTML += `<div id="sec-${cat}" class="section ${activeClass}"><div class="bracket-wrapper"><div id="bracket-${cat}" class="bracket-container"></div></div></div>`; 
     });
+
     function renderCategory(cat) { 
-        const container = document.getElementById('bracket-' + cat); container.innerHTML = ''; 
+        const container = document.getElementById('bracket-' + cat);
+        if(!container) return;
+        container.innerHTML = ''; 
         ROUNDS.forEach(r => { 
             const col = document.createElement('div'); col.className = 'round-column'; col.innerHTML = `<div class="round-title">${r.toUpperCase()}</div>`; 
             tournamentData[cat][r].forEach((m, i) => { 
@@ -70,9 +91,28 @@
             }); container.appendChild(col); 
         }); 
     }
-    function updateField(cat, round, idx, field, val) { tournamentData[cat][round][idx][field] = val; db.ref('padel_torneo_pro_v2').set(tournamentData); }
-    db.ref('padel_torneo_pro_v2').on('value', snap => { if(snap.exists()) { const data = snap.val(); CATEGORIES.forEach(c => { if(data[c]) tournamentData[c] = data[c]; }); CATEGORIES.forEach(cat => renderCategory(cat)); } });
-    function resetAll() { if(confirm("¿Limpiar todo el torneo?")) { initEmptyData(); db.ref('padel_torneo_pro_v2').set(tournamentData); } }
+
+    function updateField(cat, round, idx, field, val) { 
+        tournamentData[cat][round][idx][field] = val; 
+        db.ref('padel_torneo_pro_v2').set(tournamentData); 
+    }
+
+    // FIREBASE
+    const firebaseConfig = { apiKey: "AIzaSyDwSOR6VxlrLlfEoab9Zi0GjbeFtrQiVjY", authDomain: "proyecto-mundial-2026.firebaseapp.com", databaseURL: "https://proyecto-mundial-2026-default-rtdb.firebaseio.com", projectId: "proyecto-mundial-2026", storageBucket: "proyecto-mundial-2026.firebasestorage.app", messagingSenderId: "774794097290", appId: "1:774794097290:web:91ff18d99e7e07a6873373" };
+    firebase.initializeApp(firebaseConfig); 
+    const db = firebase.database();
+
+    initEmptyData();
+    CATEGORIES.forEach(cat => renderCategory(cat)); // Renderizar vacíos primero
+
+    db.ref('padel_torneo_pro_v2').on('value', snap => { 
+        if(snap.exists()) { 
+            tournamentData = snap.val(); 
+            CATEGORIES.forEach(cat => renderCategory(cat)); 
+        } 
+    });
+
+    function resetAll() { if(confirm("¿Limpiar todo?")) { initEmptyData(); db.ref('padel_torneo_pro_v2').set(tournamentData); } }
 </script>
 </body>
 </html>
