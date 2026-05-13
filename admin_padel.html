@@ -7,7 +7,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
     <style>
-        :root { --bg-color: #0f172a; --card-bg: #1e293b; --accent: #10b981; --text-main: #f8fafc; --text-dim: #94a3b8; --border: #334155; }
+        :root { --bg-color: #0f172a; --card-bg: #1e293b; --accent: #10b981; --text-main: #f8fafc; --text-dim: #94a3b8; --border: #334155; --danger: #ef4444; }
         body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 15px; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); display: flex; justify-content: center; align-items: center; z-index: 10000; }
         .login-box { background: var(--card-bg); padding: 30px; border-radius: 15px; border: 1px solid var(--border); text-align: center; width: 90%; max-width: 350px; }
@@ -17,9 +17,11 @@
         .ad-banner-container { width: 100%; max-width: 950px; margin: 0 auto 20px; background: rgba(51, 65, 85, 0.3); border-radius: 12px; padding: 15px; text-align: center; }
         .ad-images-wrapper { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
         .ad-images-wrapper img { width: 22%; height: 80px; object-fit: contain; background: white; border-radius: 6px; }
-        .tabs { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tabs-wrapper { display: flex; flex-direction: column; align-items: center; gap: 15px; margin-bottom: 20px; }
+        .tabs { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
         .tab-btn { background: var(--card-bg); border: 1px solid var(--border); color: white; padding: 10px 15px; cursor: pointer; border-radius: 15px; font-weight: bold; }
         .tab-btn.active { background: var(--accent); }
+        .btn-reset { background: var(--danger); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; text-transform: uppercase; margin-top: 10px; }
         .section { display: none; } 
         .section.active { display: block; }
         .bracket-container { display: flex; flex-direction: column; gap: 20px; align-items: center; }
@@ -47,7 +49,10 @@
             <img src="Publi-1.jpg"><img src="Publi-2.jpg"><img src="Publi-3.jpg"><img src="Publi-4.jpg">
         </div>
     </div>
-    <div class="tabs" id="tabs-container"></div>
+    <div class="tabs-wrapper">
+        <div class="tabs" id="tabs-container"></div>
+        <button class="btn-reset" onclick="resetAllData()">⚠️ Reiniciar Todo el Torneo ⚠️</button>
+    </div>
     <div id="sections-container"></div>
 </div>
 <script>
@@ -63,6 +68,39 @@
         return String.fromCharCode(65 + (offsets[round] || 0) + index);
     }
 
+    function initStructure() {
+        let freshData = {};
+        CATEGORIES.forEach(cat => {
+            freshData[cat] = { 'r16': [], 'qf': [], 'sf': [], 'f': [] };
+            ['r16', 'qf', 'sf', 'f'].forEach(r => {
+                let count = r==='r16'?8 : r==='qf'?4 : r==='sf'?2 : 1;
+                for(let i=0; i<count; i++) {
+                    let m = { p1:'', p2:'', p1s1:'', p1s2:'', p1s3:'', p2s1:'', p2s2:'', p2s3:'', court:'', time:'' };
+                    freshData[cat][r].push(m);
+                }
+            });
+            // Generar placeholders iniciales (Ganador A, etc)
+            for(let i=0; i<4; i++) {
+                freshData[cat].qf[i].p1 = 'Ganador ' + getMatchLetter('r16', i*2);
+                freshData[cat].qf[i].p2 = 'Ganador ' + getMatchLetter('r16', i*2+1);
+            }
+            for(let i=0; i<2; i++) {
+                freshData[cat].sf[i].p1 = 'Ganador ' + getMatchLetter('qf', i*2);
+                freshData[cat].sf[i].p2 = 'Ganador ' + getMatchLetter('qf', i*2+1);
+            }
+            freshData[cat].f[0].p1 = 'Ganador ' + getMatchLetter('sf', 0);
+            freshData[cat].f[0].p2 = 'Ganador ' + getMatchLetter('sf', 1);
+        });
+        return freshData;
+    }
+
+    function resetAllData() {
+        if(confirm("¿Deseas borrar resultados y nombres? Las fases siguientes volverán a decir 'Ganador X'.")) {
+            tournamentData = initStructure();
+            db.ref('padel_torneo_pro_v2').set(tournamentData);
+        }
+    }
+
     function getWinner(m) {
         let p1Sets=0, p2Sets=0;
         for(let i=1; i<=3; i++) {
@@ -76,17 +114,14 @@
 
     function recalculateAdvancements(cat) {
         const catData = tournamentData[cat];
-        // R16 -> QF
         for(let i=0; i<4; i++) {
             catData.qf[i].p1 = getWinner(catData.r16[i*2]) || 'Ganador ' + getMatchLetter('r16', i*2);
             catData.qf[i].p2 = getWinner(catData.r16[i*2+1]) || 'Ganador ' + getMatchLetter('r16', i*2+1);
         }
-        // QF -> SF
         for(let i=0; i<2; i++) {
             catData.sf[i].p1 = getWinner(catData.qf[i*2]) || 'Ganador ' + getMatchLetter('qf', i*2);
             catData.sf[i].p2 = getWinner(catData.qf[i*2+1]) || 'Ganador ' + getMatchLetter('qf', i*2+1);
         }
-        // SF -> F
         catData.f[0].p1 = getWinner(catData.sf[0]) || 'Ganador ' + getMatchLetter('sf', 0);
         catData.f[0].p2 = getWinner(catData.sf[1]) || 'Ganador ' + getMatchLetter('sf', 1);
     }
