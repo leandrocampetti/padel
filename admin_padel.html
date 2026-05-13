@@ -75,33 +75,22 @@
             ['r16', 'qf', 'sf', 'f'].forEach(r => {
                 let count = r==='r16'?8 : r==='qf'?4 : r==='sf'?2 : 1;
                 for(let i=0; i<count; i++) {
-                    let m = { p1:'', p2:'', p1s1:'', p1s2:'', p1s3:'', p2s1:'', p2s2:'', p2s3:'', court:'', time:'' };
-                    freshData[cat][r].push(m);
+                    freshData[cat][r].push({ p1:'', p2:'', p1s1:'', p1s2:'', p1s3:'', p2s1:'', p2s2:'', p2s3:'', court:'', time:'' });
                 }
             });
-            // Generar placeholders iniciales (Ganador A, etc)
-            for(let i=0; i<4; i++) {
-                freshData[cat].qf[i].p1 = 'Ganador ' + getMatchLetter('r16', i*2);
-                freshData[cat].qf[i].p2 = 'Ganador ' + getMatchLetter('r16', i*2+1);
-            }
-            for(let i=0; i<2; i++) {
-                freshData[cat].sf[i].p1 = 'Ganador ' + getMatchLetter('qf', i*2);
-                freshData[cat].sf[i].p2 = 'Ganador ' + getMatchLetter('qf', i*2+1);
-            }
-            freshData[cat].f[0].p1 = 'Ganador ' + getMatchLetter('sf', 0);
-            freshData[cat].f[0].p2 = 'Ganador ' + getMatchLetter('sf', 1);
         });
         return freshData;
     }
 
     function resetAllData() {
-        if(confirm("¿Deseas borrar resultados y nombres? Las fases siguientes volverán a decir 'Ganador X'.")) {
+        if(confirm("¿Seguro? Se limpiará todo y los cuadros mostrarán 'Ganador A', 'Ganador B', etc.")) {
             tournamentData = initStructure();
             db.ref('padel_torneo_pro_v2').set(tournamentData);
         }
     }
 
     function getWinner(m) {
+        if(!m) return null;
         let p1Sets=0, p2Sets=0;
         for(let i=1; i<=3; i++) {
             let s1 = parseInt(m['p1s'+i]), s2 = parseInt(m['p2s'+i]);
@@ -115,15 +104,21 @@
     function recalculateAdvancements(cat) {
         const catData = tournamentData[cat];
         for(let i=0; i<4; i++) {
-            catData.qf[i].p1 = getWinner(catData.r16[i*2]) || 'Ganador ' + getMatchLetter('r16', i*2);
-            catData.qf[i].p2 = getWinner(catData.r16[i*2+1]) || 'Ganador ' + getMatchLetter('r16', i*2+1);
+            let winner1 = getWinner(catData.r16[i*2]);
+            let winner2 = getWinner(catData.r16[i*2+1]);
+            catData.qf[i].p1 = winner1 ? winner1 : 'Ganador ' + getMatchLetter('r16', i*2);
+            catData.qf[i].p2 = winner2 ? winner2 : 'Ganador ' + getMatchLetter('r16', i*2+1);
         }
         for(let i=0; i<2; i++) {
-            catData.sf[i].p1 = getWinner(catData.qf[i*2]) || 'Ganador ' + getMatchLetter('qf', i*2);
-            catData.sf[i].p2 = getWinner(catData.qf[i*2+1]) || 'Ganador ' + getMatchLetter('qf', i*2+1);
+            let winner1 = getWinner(catData.qf[i*2]);
+            let winner2 = getWinner(catData.qf[i*2+1]);
+            catData.sf[i].p1 = winner1 ? winner1 : 'Ganador ' + getMatchLetter('qf', i*2);
+            catData.sf[i].p2 = winner2 ? winner2 : 'Ganador ' + getMatchLetter('qf', i*2+1);
         }
-        catData.f[0].p1 = getWinner(catData.sf[0]) || 'Ganador ' + getMatchLetter('sf', 0);
-        catData.f[0].p2 = getWinner(catData.sf[1]) || 'Ganador ' + getMatchLetter('sf', 1);
+        let wSF1 = getWinner(catData.sf[0]);
+        let wSF2 = getWinner(catData.sf[1]);
+        catData.f[0].p1 = wSF1 ? wSF1 : 'Ganador ' + getMatchLetter('sf', 0);
+        catData.f[0].p2 = wSF2 ? wSF2 : 'Ganador ' + getMatchLetter('sf', 1);
     }
 
     function showSection(cat) {
@@ -149,6 +144,7 @@
     function renderCategory(cat) {
         const container = document.getElementById('bracket-' + cat); if(!container) return;
         container.innerHTML = '';
+        recalculateAdvancements(cat);
         ['r16','qf','sf','f'].forEach(r => {
             const col = document.createElement('div'); col.className = 'round-column';
             col.innerHTML = `<div class="round-title">${ROUND_NAMES[r]} - Cat. ${cat}</div>`;
