@@ -24,7 +24,8 @@
         .match-id { position: absolute; top: -8px; left: -8px; background: var(--accent); color: white; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.7rem; border: 2px solid var(--bg-color); }
         .score { color: #facc15; font-weight: bold; min-width: 60px; text-align: right; }
         .match-info { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 8px; }
-        .player-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+        .player-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; font-weight: 500; }
+        .placeholder { color: var(--text-dim); font-style: italic; font-weight: normal; }
         @media (max-width: 600px) { .ad-images-wrapper img { width: 45%; height: 70px; } }
     </style>
 </head>
@@ -65,13 +66,6 @@
         return (p1Sets >= 2) ? m.p1 : (p2Sets >= 2) ? m.p2 : null;
     }
 
-    function changeCat(cat) {
-        currentCat = cat;
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('btn-'+cat).classList.add('active');
-        render();
-    }
-
     function render() {
         const view = document.getElementById('bracket-view'); view.innerHTML = '';
         const catData = tournamentData[currentCat];
@@ -83,36 +77,45 @@
             catData[r].forEach((m, i) => {
                 const matchId = getMatchLetter(r, i);
                 
-                // Lógica de visualización para el espectador
-                let dispP1 = m.p1;
-                let dispP2 = m.p2;
+                let p1 = m.p1;
+                let p2 = m.p2;
+                let isPlaceholderP1 = false;
+                let isPlaceholderP2 = false;
 
+                // Lógica de placeholders idéntica al admin
                 if(r === 'qf') {
-                    dispP1 = dispP1 || 'Ganador ' + getMatchLetter('r16', i*2);
-                    dispP2 = dispP2 || 'Ganador ' + getMatchLetter('r16', i*2+1);
+                    if(!p1) { p1 = 'Ganador ' + getMatchLetter('r16', i*2); isPlaceholderP1 = true; }
+                    if(!p2) { p2 = 'Ganador ' + getMatchLetter('r16', i*2+1); isPlaceholderP2 = true; }
                 } else if(r === 'sf') {
-                    dispP1 = dispP1 || 'Ganador ' + getMatchLetter('qf', i*2);
-                    dispP2 = dispP2 || 'Ganador ' + getMatchLetter('qf', i*2+1);
+                    if(!p1) { p1 = 'Ganador ' + getMatchLetter('qf', i*2); isPlaceholderP1 = true; }
+                    if(!p2) { p2 = 'Ganador ' + getMatchLetter('qf', i*2+1); isPlaceholderP2 = true; }
                 } else if(r === 'f') {
-                    dispP1 = dispP1 || 'Ganador ' + getMatchLetter('sf', 0);
-                    dispP2 = dispP2 || 'Ganador ' + getMatchLetter('sf', 1);
+                    if(!p1) { p1 = 'Ganador ' + getMatchLetter('sf', 0); isPlaceholderP1 = true; }
+                    if(!p2) { p2 = 'Ganador ' + getMatchLetter('sf', 1); isPlaceholderP2 = true; }
                 }
 
                 col.innerHTML += `<div class="match-card">
                     <div class="match-id">${matchId}</div>
                     <div class="match-info">Cancha: ${m.court||'-'} | 🕒 ${m.time||'-'}</div>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="player-name">${dispP1 || 'TBD'}</span>
+                        <span class="player-name ${isPlaceholderP1 ? 'placeholder' : ''}">${p1 || 'TBD'}</span>
                         <span class="score">${m.p1s1||'-'} ${m.p1s2||'-'} ${m.p1s3||'-'}</span>
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px">
-                        <span class="player-name">${dispP2 || 'TBD'}</span>
+                        <span class="player-name ${isPlaceholderP2 ? 'placeholder' : ''}">${p2 || 'TBD'}</span>
                         <span class="score">${m.p2s1||'-'} ${m.p2s2||'-'} ${m.p2s3||'-'}</span>
                     </div>
                 </div>`;
             });
             view.appendChild(col);
         });
+    }
+
+    function changeCat(cat) {
+        currentCat = cat;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-'+cat).classList.add('active');
+        render();
     }
 
     const tabsContainer = document.getElementById('tabs-container');
