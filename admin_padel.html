@@ -20,15 +20,16 @@
         .tabs { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
         .tab-btn { background: var(--card-bg); border: 1px solid var(--border); color: white; padding: 10px 15px; cursor: pointer; border-radius: 15px; font-weight: bold; }
         .tab-btn.active { background: var(--accent); }
-        /* CORRECCIÓN DE CATEGORÍAS */
         .section { display: none; } 
         .section.active { display: block; }
         .bracket-container { display: flex; flex-direction: column; gap: 20px; align-items: center; }
-        .round-column { width: 100%; max-width: 400px; }
+        .round-column { width: 100%; max-width: 420px; }
         .round-title { text-align: center; color: var(--accent); font-weight: bold; padding: 10px; border-bottom: 2px solid var(--border); margin-bottom: 15px; font-size: 1.1rem; }
-        .match-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+        .match-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 15px; position: relative; }
+        .match-id { position: absolute; top: -10px; left: -10px; background: var(--accent); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem; border: 2px solid var(--bg-color); }
         .player-input { width: 60%; background: #0f172a; border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px; }
         .set-input { width: 25px; background: #0f172a; border: 1px solid var(--border); color: white; text-align: center; border-radius: 5px; font-weight: bold; }
+        .info-row { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 8px; display: flex; gap: 10px; align-items: center; }
         @media (max-width: 600px) { .ad-images-wrapper img { width: 45%; height: 70px; } }
     </style>
 </head>
@@ -57,6 +58,39 @@
     const ROUND_NAMES = { 'r16': 'Octavos de Final', 'qf': 'Cuartos de Final', 'sf': 'Semifinal', 'f': 'Final' };
     let tournamentData = {};
 
+    function getMatchLetter(round, index) {
+        const offsets = { 'r16': 0, 'qf': 8, 'sf': 12, 'f': 14 };
+        return String.fromCharCode(65 + (offsets[round] || 0) + index);
+    }
+
+    function getWinner(m) {
+        let p1Sets=0, p2Sets=0;
+        for(let i=1; i<=3; i++) {
+            let s1 = parseInt(m['p1s'+i]), s2 = parseInt(m['p2s'+i]);
+            if(!isNaN(s1) && !isNaN(s2)) { if(s1 > s2) p1Sets++; else if(s2 > s1) p2Sets++; }
+        }
+        if(p1Sets >= 2) return m.p1;
+        if(p2Sets >= 2) return m.p2;
+        return null;
+    }
+
+    function recalculateAdvancements(cat) {
+        const catData = tournamentData[cat];
+        // R16 -> QF
+        for(let i=0; i<4; i++) {
+            catData.qf[i].p1 = getWinner(catData.r16[i*2]) || 'Ganador ' + getMatchLetter('r16', i*2);
+            catData.qf[i].p2 = getWinner(catData.r16[i*2+1]) || 'Ganador ' + getMatchLetter('r16', i*2+1);
+        }
+        // QF -> SF
+        for(let i=0; i<2; i++) {
+            catData.sf[i].p1 = getWinner(catData.qf[i*2]) || 'Ganador ' + getMatchLetter('qf', i*2);
+            catData.sf[i].p2 = getWinner(catData.qf[i*2+1]) || 'Ganador ' + getMatchLetter('qf', i*2+1);
+        }
+        // SF -> F
+        catData.f[0].p1 = getWinner(catData.sf[0]) || 'Ganador ' + getMatchLetter('sf', 0);
+        catData.f[0].p2 = getWinner(catData.sf[1]) || 'Ganador ' + getMatchLetter('sf', 1);
+    }
+
     function showSection(cat) {
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -71,15 +105,26 @@
         secsCont.innerHTML += `<div id="sec-${cat}" class="section ${index===0?'active':''}"><div class="bracket-container" id="bracket-${cat}"></div></div>`;
     });
 
-    function update(cat, round, i, field, val) { tournamentData[cat][round][i][field] = val; db.ref('padel_torneo_pro_v2').set(tournamentData); }
+    function update(cat, round, i, field, val) { 
+        tournamentData[cat][round][i][field] = val; 
+        recalculateAdvancements(cat);
+        db.ref('padel_torneo_pro_v2').set(tournamentData); 
+    }
 
     function renderCategory(cat) {
-        const container = document.getElementById('bracket-' + cat); container.innerHTML = '';
+        const container = document.getElementById('bracket-' + cat); if(!container) return;
+        container.innerHTML = '';
         ['r16','qf','sf','f'].forEach(r => {
             const col = document.createElement('div'); col.className = 'round-column';
             col.innerHTML = `<div class="round-title">${ROUND_NAMES[r]} - Cat. ${cat}</div>`;
             tournamentData[cat][r].forEach((m, i) => {
-                col.innerHTML += `<div class="match-card">C: <input class="set-input" style="width:40px" value="${m.court||''}" onchange="update('${cat}','${r}',${i},'court',this.value)"> Hora: <input class="set-input" style="width:60px" value="${m.time||''}" onchange="update('${cat}','${r}',${i},'time',this.value)"><div style="margin-top:10px"><input class="player-input" value="${m.p1||''}" onchange="update('${cat}','${r}',${i},'p1',this.value)"> <input class="set-input" value="${m.p1s1||''}" onchange="update('${cat}','${r}',${i},'p1s1',this.value)"> <input class="set-input" value="${m.p1s2||''}" onchange="update('${cat}','${r}',${i},'p1s2',this.value)"> <input class="set-input" value="${m.p1s3||''}" onchange="update('${cat}','${r}',${i},'p1s3',this.value)"></div><div style="margin-top:5px"><input class="player-input" value="${m.p2||''}" onchange="update('${cat}','${r}',${i},'p2',this.value)"> <input class="set-input" value="${m.p2s1||''}" onchange="update('${cat}','${r}',${i},'p2s1',this.value)"> <input class="set-input" value="${m.p2s2||''}" onchange="update('${cat}','${r}',${i},'p2s2',this.value)"> <input class="set-input" value="${m.p2s3||''}" onchange="update('${cat}','${r}',${i},'p2s3',this.value)"></div></div>`;
+                const matchId = getMatchLetter(r, i);
+                col.innerHTML += `<div class="match-card">
+                    <div class="match-id">${matchId}</div>
+                    <div class="info-row">Cancha: <input class="set-input" style="width:40px" value="${m.court||''}" onchange="update('${cat}','${r}',${i},'court',this.value)"> 🕒 Hora: <input class="set-input" style="width:60px" value="${m.time||''}" onchange="update('${cat}','${r}',${i},'time',this.value)"></div>
+                    <div style="margin-top:5px"><input class="player-input" value="${m.p1||''}" onchange="update('${cat}','${r}',${i},'p1',this.value)"> <input class="set-input" value="${m.p1s1||''}" onchange="update('${cat}','${r}',${i},'p1s1',this.value)"> <input class="set-input" value="${m.p1s2||''}" onchange="update('${cat}','${r}',${i},'p1s2',this.value)"> <input class="set-input" value="${m.p1s3||''}" onchange="update('${cat}','${r}',${i},'p1s3',this.value)"></div>
+                    <div style="margin-top:5px"><input class="player-input" value="${m.p2||''}" onchange="update('${cat}','${r}',${i},'p2',this.value)"> <input class="set-input" value="${m.p2s1||''}" onchange="update('${cat}','${r}',${i},'p2s1',this.value)"> <input class="set-input" value="${m.p2s2||''}" onchange="update('${cat}','${r}',${i},'p2s2',this.value)"> <input class="set-input" value="${m.p2s3||''}" onchange="update('${cat}','${r}',${i},'p2s3',this.value)"></div>
+                </div>`;
             }); container.appendChild(col);
         });
     }
