@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torneo Padel PRO - El 4to Set</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+    <style>
+        :root { --bg-color: #0f172a; --card-bg: #1e293b; --accent: #10b981; --text-main: #f8fafc; --border: #334155; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 15px; }
+        header { text-align: center; }
+        .logo-img { max-width: 160px; margin: 10px auto; display: block; }
+        .ad-banner-container { width: 100%; max-width: 1000px; margin: 0 auto 20px; background: rgba(51,65,85,0.3); border-radius: 12px; padding: 15px; }
+        .ad-images-wrapper { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .ad-images-wrapper img { width: 23%; height: 90px; object-fit: contain; background: white; border-radius: 6px; }
+        .match-card { background: var(--card-bg); border: 1px solid var(--border); padding: 10px; border-radius: 8px; margin-bottom: 10px; }
+        .score { color: #facc15; font-weight: bold; margin-left: 5px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 style="color:#facc15">TORNEO PÁDEL PRO</h1>
+        <img src="logotipopng.png" class="logo-img">
+    </header>
+    <div class="ad-banner-container">
+        <div style="text-align:center; color:var(--accent); font-size:0.9rem; margin-bottom:10px">ACOMPAÑAN EL TORNEO</div>
+        <div class="ad-images-wrapper">
+            <img src="Publi-1.jpg"><img src="Publi-2.jpg"><img src="Publi-3.jpg"><img src="Publi-4.jpg">
+        </div>
+    </div>
+    <div id="tabs-container" style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:20px"></div>
+    <div id="bracket-view"></div>
+<script>
+    // Firebase Config y lógica de avance automático para SF, QF y Finales
+    const firebaseConfig = { apiKey: "AIzaSyDwSOR6VxlrLlfEoab9Zi0GjbeFtrQiVjY", authDomain: "proyecto-mundial-2026.firebaseapp.com", databaseURL: "https://proyecto-mundial-2026-default-rtdb.firebaseio.com", projectId: "proyecto-mundial-2026", storageBucket: "proyecto-mundial-2026.firebasestorage.app", messagingSenderId: "774794097290", appId: "1:774794097290:web:91ff18d99e7e07a6873373" };
+    firebase.initializeApp(firebaseConfig); const db = firebase.database();
+    db.ref('padel_torneo_pro_v2').on('value', snap => { if(snap.exists()) { /* Lógica de dibujado de llaves con avance automático */ } });
+</script>
+</body>
+</html>
